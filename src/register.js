@@ -3,6 +3,14 @@ import equal from 'deep-equal';
 import { grantToken, getCommands as getDiscordCommands, registerCommand, updateCommand, removeCommand } from './api.js';
 import { validateCommands } from './util.js';
 
+/**
+ * Ensure a command option object has a consistent structure
+ *
+ * Useful when doing deep-equal checks for command option equality
+ *
+ * @param {Object} obj
+ * @returns {{ type: string, name: string, description: string, default: boolean, required: boolean, choices: *[], options: *[] }}
+ */
 const consistentCommandOption = obj => ({
     type: obj.type,
     name: obj.name,
@@ -13,6 +21,13 @@ const consistentCommandOption = obj => ({
     options: obj.options || [],
 });
 
+/**
+ * Check which properties of a command have changed
+ *
+ * @param {{ name: string, description: string, options: *[] }} oldCmd
+ * @param {{ name: string, description: string, options: *[] }} newCmd
+ * @returns {{ name: boolean, description: boolean, options: boolean }}
+ */
 const updatedCommandProps = (oldCmd, newCmd) => ({
     name: oldCmd.name !== newCmd.name,
     description: oldCmd.description !== newCmd.description,
@@ -22,13 +37,25 @@ const updatedCommandProps = (oldCmd, newCmd) => ({
     ),
 });
 
-const updatedCommandPatch = (cmd, diff) => Object.keys(cmd)
-    .filter(key => key in diff && diff[key])
-    .reduce((obj, key) => {
-        obj[key] = cmd[key];
-        return obj;
-    }, {});
+/**
+ * Filter a command object to only include properties that have changed
+ *
+ * @param {Record<string, any>} cmd
+ * @param {Record<string, boolean>} diff
+ * @returns {Record<string, any>}
+ */
+const updatedCommandPatch = (cmd, diff) => Object.entries(cmd)
+    .reduce((obj, [key, value]) => diff[key] ? { ...obj, [key]: value } : obj, {});
 
+/**
+ * Register or update commands with Discord
+ *
+ * @param {string} clientId Application client ID
+ * @param {string} clientSecret Application client secret
+ * @param {import('./util.js').Command[]} commands Commands to register
+ * @param {string} [guildId] Optional guild ID, to register guild-specific commands
+ * @returns {Promise<(import('./util.js').Command & import('discord-api-types/rest').RESTPostAPIApplicationCommandsResult)[]>}
+ */
 const registerCommands = async (clientId, clientSecret, commands, guildId = undefined) => {
     // Validate the provided commands
     const cmds = Object.values(validateCommands(commands));

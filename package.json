@@ -1,0 +1,31 @@
+{
+  "name": "workers-discord",
+  "version": "0.0.1",
+  "description": "Some wrappers for Discord applications in Workers",
+  "type": "module",
+  "keywords": [],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MattIPv4/workers-discord.git"
+  },
+  "author": "Matt (IPv4) Cowley",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/MattIPv4/workers-discord/issues"
+  },
+  "homepage": "https://github.com/MattIPv4/workers-discord#readme",
+  "exports": {
+    "./handler": {
+      "import": "./src/handler.js"
+    },
+    "./register": {
+      "import": "./src/register.js"
+    }
+  },
+  "peerDependencies": {
+    "discord-api-types": ">=0.37.0, <0.38.0"
+  },
+  "dependencies": {
+    "deep-equal": "^2.2.3"
+  }
+}

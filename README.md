@@ -79,7 +79,7 @@ export default {
 `index.js`:
 
 ```js
-import createHandler from 'workers-discord/handler';
+import { createHandler } from 'workers-discord';
 
 import pingCommand from './commands/ping.js';
 import pingComponent from './components/ping.js';
@@ -99,7 +99,7 @@ export default {
 `build.js`:
 
 ```js
-import registerCommands from 'workers-discord/register';
+import { registerCommands } from 'workers-discord';
 
 import pingCommand from './commands/ping.js';
 

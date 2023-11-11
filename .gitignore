@@ -5,5 +5,8 @@
 # NPM
 node_modules/
 
+# Build
+dist/
+
 # macOS
 .DS_Store

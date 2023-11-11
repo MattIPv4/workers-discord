@@ -1,23 +1,29 @@
-import { InteractionType, InteractionResponseType, MessageFlags } from 'discord-api-types/payloads';
+import {
+    InteractionType,
+    InteractionResponseType,
+    MessageFlags,
+    type APIInteraction,
+    type APIApplicationCommandInteraction,
+    type APIMessageComponentInteraction,
+} from 'discord-api-types/payloads';
+import type { Toucan } from 'toucan-js';
 
-import verify, { importKey } from './verify.js';
-import { validateCommands, validateComponents } from './util.js';
-import { editDeferred, sendAdditional } from './api.js';
-
-/**
- * @typedef {Object} Event
- * @property {*} request TODO: type
- * @property {*} env TODO: type
- * @property {*} ctx TODO: type
- */
+import { verifyRequest, importKey } from './verify';
+import {
+    validateCommands,
+    validateComponents,
+    type Context,
+    type Command,
+    type Commands,
+    type Component,
+    type Components,
+} from './structure';
+import { editDeferred, sendAdditional } from './api';
 
 /**
  * Create a new JSON response
- *
- * @param {any} obj Value to return as JSON
- * @returns {Response}
  */
-const jsonResponse = obj => new Response(JSON.stringify(obj), {
+const jsonResponse = (obj: any) => new Response(JSON.stringify(obj), {
     headers: {
         'Content-Type': 'application/json',
     },
@@ -25,14 +31,8 @@ const jsonResponse = obj => new Response(JSON.stringify(obj), {
 
 /**
  * Handle an incoming Discord command interaction request to the Worker
- *
- * @param {Event} event
- * @param {import('discord-api-types/payloads').APIApplicationCommandInteraction} interaction
- * @param {Record<string, import('./util.js').Command>} commands
- * @param {*} [sentry] TODO: type
- * @returns {Promise<Response>}
  */
-const handleCommandInteraction = async (event, interaction, commands, sentry) => {
+const handleCommandInteraction = async <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, interaction: APIApplicationCommandInteraction, commands: Commands<Req, Ctx, Sentry>, sentry: Sentry) => {
     // If the command doesn't exist, return a 404
     if (!commands[interaction.data.name])
         return new Response(null, { status: 404 });
@@ -46,10 +46,11 @@ const handleCommandInteraction = async (event, interaction, commands, sentry) =>
         return commands[interaction.data.name].execute({
             interaction,
             response: jsonResponse,
-            wait: event.ctx.waitUntil.bind(event.ctx),
+            wait: context.waitUntil.bind(context),
             edit: editDeferred.bind(null, interaction),
             more: sendAdditional.bind(null, interaction),
-            event,
+            request,
+            context,
             sentry,
             commands,
         });
@@ -72,14 +73,8 @@ const handleCommandInteraction = async (event, interaction, commands, sentry) =>
 
 /**
  * Handle an incoming Discord component interaction request to the Worker
- *
- * @param {Event} event
- * @param {import('discord-api-types/payloads').APIMessageComponentInteraction} interaction
- * @param {Record<string, import('./util.js').Component>} components
- * @param {*} [sentry] TODO: type
- * @returns {Promise<Response>}
  */
-const handleComponentInteraction = async (event, interaction, components, sentry) => {
+const handleComponentInteraction = async <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, interaction: APIMessageComponentInteraction, components: Components<Req, Ctx, Sentry>, sentry: Sentry) => {
     // If the component doesn't exist, return a 404
     if (!components[interaction.data.custom_id])
         return new Response(null, { status: 404 });
@@ -93,10 +88,11 @@ const handleComponentInteraction = async (event, interaction, components, sentry
         return components[interaction.data.custom_id].execute({
             interaction,
             response: jsonResponse,
-            wait: event.ctx.waitUntil.bind(event.ctx),
+            wait: context.waitUntil.bind(context),
             edit: editDeferred.bind(null, interaction),
             more: sendAdditional.bind(null, interaction),
-            event,
+            request,
+            context,
             sentry,
         });
     } catch (err) {
@@ -112,28 +108,18 @@ const handleComponentInteraction = async (event, interaction, components, sentry
 
 /**
  * Handle an incoming Discord interaction request to the Worker
- *
- * @param {Event} event
- * @param {Promise<CryptoKey>} publicKey
- * @param {Record<string, import('./util.js').Command>} commands
- * @param {Record<string, import('./util.js').Component>} components
- * @param {*} [sentry] TODO: type
- * @returns {Promise<Response>}
  */
-const handleInteraction = async (event, publicKey, commands, components, sentry) => {
+const handleInteraction = async <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, publicKey: Promise<CryptoKey>, commands: Commands<Req, Ctx, Sentry>, components: Components<Req, Ctx, Sentry>, sentry: Sentry) => {
     // Get the body as text
-    const body = await event.request.text();
-    if (sentry) sentry.setRequestBody(body);
+    const body = await request.text();
+    if (sentry) sentry.captureException(new Error('test'));
 
     // Verify a legitimate request
-    if (!await verify(event.request, body, await publicKey))
+    if (!await verifyRequest(request, body, await publicKey))
         return new Response(null, { status: 401 });
 
-    /**
-     * JSON payload for the interaction request
-     * @type {import('discord-api-types/payloads').APIInteraction}
-     */
-    const interaction = JSON.parse(body);
+    // Get the JSON payload for the interaction request
+    const interaction = JSON.parse(body) as APIInteraction;
     if (sentry) sentry.setRequestBody(interaction);
 
     // Handle different interaction types
@@ -146,11 +132,11 @@ const handleInteraction = async (event, publicKey, commands, components, sentry)
 
         // Handle a command
         case InteractionType.ApplicationCommand:
-            return handleCommandInteraction(event, interaction, commands, sentry);
+            return handleCommandInteraction(request, context, interaction, commands, sentry);
 
         // Handle a component
         case InteractionType.MessageComponent:
-            return handleComponentInteraction(event, interaction, components, sentry);
+            return handleComponentInteraction(request, context, interaction, components, sentry);
 
         // Unknown
         default:
@@ -163,21 +149,14 @@ const handleInteraction = async (event, publicKey, commands, components, sentry)
  *
  *   - POST /interactions
  *   - GET  /health
- *
- * @param {Event} event
- * @param {Promise<CryptoKey>} publicKey
- * @param {Record<string, import('./util.js').Command>} commands
- * @param {Record<string, import('./util.js').Component>} components
- * @param {*} [sentry] TODO: type
- * @returns {Promise<Response | undefined>}
  */
-const handleRequest = async (event, publicKey, commands, components, sentry) => {
-    const url = new URL(event.request.url);
+const handleRequest = async <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, publicKey: Promise<CryptoKey>, commands: Commands<Req, Ctx, Sentry>, components: Components<Req, Ctx, Sentry>, sentry: Sentry) => {
+    const url = new URL(request.url);
 
-    if (event.request.method === 'POST' && url.pathname === '/interactions')
-        return handleInteraction(event, publicKey, commands, components, sentry);
+    if (request.method === 'POST' && url.pathname === '/interactions')
+        return handleInteraction(request, context, publicKey, commands, components, sentry);
 
-    if (event.request.method === 'GET' && url.pathname === '/health')
+    if (request.method === 'GET' && url.pathname === '/health')
         return new Response('OK', {
             headers: {
                 'Content-Type': 'text/plain',
@@ -190,22 +169,17 @@ const handleRequest = async (event, publicKey, commands, components, sentry) => 
 
 /**
  * Create a new Worker fetch handler for Discord interactions
- *
- * @param {import('./util.js').Command[]} commands Commands to register
- * @param {import('./util.js').Component[]} components Components to register
- * @param {string} publicKey Public key for verifying requests
- * @returns {(event: Event, sentry: *) => Promise<Response | undefined>} TODO: type
  */
-const createHandler = (commands, components, publicKey) => {
+const createHandler = <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(commands: Command[], components: Component[], publicKey: string, warn = false) => {
     // Validate the commands and components given
-    const cmds = validateCommands(commands);
-    const cmps = validateComponents(components);
+    const cmds = validateCommands<Req, Ctx, Sentry>(commands, warn);
+    const cmps = validateComponents<Req, Ctx, Sentry>(components, warn);
 
     // Import the full key for verification
     const key = importKey(publicKey);
 
     // Return the handler
-    return (event, sentry) => handleRequest(event, key, cmds, cmps, sentry);
+    return (request: Req, context: Ctx, sentry: Sentry) => handleRequest(request, context, key, cmds, cmps, sentry);
 };
 
 export default createHandler;

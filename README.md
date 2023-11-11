@@ -88,7 +88,8 @@ const handler = createHandler([ pingCommand ], [ pingComponent ], '<client_publi
 
 export default {
     fetch: async (request, env, ctx) => {
-        const resp = await handler({ request, env, ctx });
+        ctx.env = env;
+        const resp = await handler(request, ctx);
         if (resp) return resp;
 
         return new Response('Not found', { status: 404 });

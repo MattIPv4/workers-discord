@@ -84,15 +84,20 @@ import { createHandler } from 'workers-discord';
 import pingCommand from './commands/ping.js';
 import pingComponent from './components/ping.js';
 
-const handler = createHandler([ pingCommand ], [ pingComponent ], '<client_public_key>');
+const handler = createHandler(
+    [ pingCommand ],        // Array of commands to handle interactions for
+    [ pingComponent ],      // Array of components to handle interactions for
+    '<client_public_key>',  // Discord application public key
+    true,                   // Whether to log warnings for any invalid commands/components passed
+);
 
 export default {
     fetch: async (request, env, ctx) => {
-        ctx.env = env;
+        ctx.env = env;                                      // Pass the environment to the command/component context
         const resp = await handler(request, ctx);
         if (resp) return resp;
 
-        return new Response('Not found', { status: 404 });
+        return new Response('Not found', { status: 404 });  // Fallback for any requests not handled by the handler
     },
 };
 ```
@@ -104,5 +109,11 @@ import { registerCommands } from 'workers-discord';
 
 import pingCommand from './commands/ping.js';
 
-await registerCommands('<client_id>', '<client_secret>', [ pingCommand ], '<optional_guild_id>');
+await registerCommands(
+    '<client_id>',          // Discord application client ID
+    '<client_secret>',      // Discord application client secret
+    [ pingCommand ],        // Array of commands to register with Discord
+    true,                   // Whether to log warnings for any invalid commands passed
+    '<optional_guild_id>',  // Optional guild ID to register guild-specific commands
+);
 ```

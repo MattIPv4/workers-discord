@@ -28,6 +28,8 @@ interface Option {
     options: Option[];
 }
 
+const ratelimit = 20_000 / 5;
+
 /**
  * Ensure a command option object has a consistent structure
  *
@@ -76,46 +78,53 @@ const registerCommands = async <Req extends Request = Request, Ctx extends Conte
     const discordCommands = await getCommands(clientId, token, guildId);
 
     // Remove any commands that no longer exist in the code
-    for (const command of discordCommands) {
-        if (cmds.find(cmd => cmd.name === command.name)) continue;
-        await removeCommand(clientId, token, command.id, guildId);
-
+    const toRemove = discordCommands.filter(cmd => !cmds.find(c => c.name === cmd.name));
+    for (let i = 0; i < toRemove.length; i++) {
         // Naive avoidance of rate limits
-        await new Promise(resolve => setTimeout(resolve, 250));
+        if (i >= 5) await new Promise(resolve => setTimeout(resolve, ratelimit));
+
+        // Remove the command
+        const command = toRemove[i];
+        await removeCommand(clientId, token, command.id, guildId);
     }
 
-    // Register or update the commands with Discord
+    // Track the commands we've registered or updated
     const commandData: (Command<Req, Ctx, Sentry> & APIApplicationCommand)[] = [];
-    for (const command of cmds) {
-        // This command already exists in Discord
-        const discordCommand = discordCommands.find(cmd => cmd.name === command.name);
-        if (discordCommand) {
-            // Get which props have changed
-            const cmdDiff = updatedCommandProps(discordCommand, command);
 
-            // Only patch if a prop has changed
-            if (Object.values(cmdDiff).includes(true)) {
-                // Get the props to patch and do the update
-                const cmdPatch = objectPatch(command, cmdDiff);
-                const data = await updateCommand(clientId, token, discordCommand.id, cmdPatch, guildId);
-                commandData.push({ ...command, ...data });
+    // Patch any commands that already exist in Discord
+    const toPatch = cmds.reduce((arr, command) => {
+        const discord = discordCommands.find(c => c.name === command.name);
+        if (!discord) return arr;
 
-                // Naive avoidance of rate limits
-                await new Promise(resolve => setTimeout(resolve, 250));
-                continue;
-            }
-
-            // Store the existing command, nothing changed
-            commandData.push({ ...discordCommand, ...command });
-            continue;
+        const diff = updatedCommandProps(discord, command);
+        if (!Object.values(diff).includes(true)) {
+            commandData.push({ ...discord, ...command });
+            return arr;
         }
 
+        return [ ...arr, { command, discord, diff } ];
+    }, [] as { command: Command<Req, Ctx, Sentry>; discord: APIApplicationCommand; diff: ReturnType<typeof updatedCommandProps> }[]);
+    for (let i = 0; i < toPatch.length; i++) {
+        // Naive avoidance of rate limits
+        if (i >= 5) await new Promise(resolve => setTimeout(resolve, ratelimit));
+
+        // Get the props to patch and do the update
+        const { command, discord, diff } = toPatch[i];
+        const cmdPatch = objectPatch(command, diff);
+        const data = await updateCommand(clientId, token, discord.id, cmdPatch, guildId);
+        commandData.push({ ...command, ...data });
+    }
+
+    // Register any commands that're new in the code
+    const toRegister = cmds.filter(cmd => !discordCommands.find(c => c.name === cmd.name));
+    for (let i = 0; i < toRegister.length; i++) {
+        // Naive avoidance of rate limits
+        if (i >= 5) await new Promise(resolve => setTimeout(resolve, ratelimit));
+
         // Register the new command
+        const command = toRegister[i];
         const data = await registerCommand(clientId, token, command, guildId);
         commandData.push({ ...command, ...data });
-
-        // Naive avoidance of rate limits
-        await new Promise(resolve => setTimeout(resolve, 250));
     }
 
     // Done

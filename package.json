@@ -1,6 +1,6 @@
 {
   "name": "workers-discord",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Some wrappers for Discord applications in Workers",
   "type": "module",
   "main": "src/index.js",

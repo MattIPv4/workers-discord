@@ -111,7 +111,7 @@ export const removeCommand = async (applicationId, token, commandId, guildId = u
  * @returns {Promise<import('discord-api-types/rest').RESTPostAPIWebhookWithTokenWaitResult>}
  */
 export const sendAdditional = async (interaction, data) =>
-    api(`${Routes.webhook(interaction.application_id, interaction.token)}?wait=true`, 'POST', null, data)
+    api(`${Routes.webhook(interaction.application_id, interaction.token)}?wait=true`, 'POST', undefined, data)
         .then(res => res.json());
 
 /**
@@ -122,5 +122,5 @@ export const sendAdditional = async (interaction, data) =>
  * @returns {Promise<import('discord-api-types/rest').RESTPatchAPIWebhookWithTokenMessageResult>}
  */
 export const editDeferred = async (interaction, data) =>
-    api(`${Routes.webhookMessage(interaction.application_id, interaction.token, interaction.message?.id || '@original')}?wait=true`, 'PATCH', null, data)
+    api(`${Routes.webhookMessage(interaction.application_id, interaction.token, interaction.message?.id || '@original')}?wait=true`, 'PATCH', undefined, data)
         .then(res => res.json());

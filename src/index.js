@@ -1,2 +1,2 @@
-export { default as createHandler } from "./handler";
-export { default as  registerCommands } from "./register";
+export { default as createHandler } from './handler.js';
+export { default as  registerCommands } from './register.js';

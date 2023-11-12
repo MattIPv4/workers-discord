@@ -1,26 +1,24 @@
-name: ci
+name: CI
 
 on:
     pull_request:
-        branches:
-            - main
     push:
-        branches:
-            - main
 
 jobs:
-    unit-tests:
+    test:
         name: Run Tests
         runs-on: ubuntu-latest
         steps:
-            - name: Check out code
+            - name: Checkout Code
               uses: actions/checkout@v3
 
-            - name: Setup node
+            - name: Setup Node.js
               uses: actions/setup-node@v3
               with:
-                  node-version: '20'
+                  node-version: $(cat .nvmrc)
                   cache: 'npm'
 
             - name: Install node dependencies and run Tests
-              run: npm install-ci-test
+              run: |
+                - npm install
+                - npm test

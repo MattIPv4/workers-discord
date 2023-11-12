@@ -15,10 +15,11 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v3
               with:
-                  node-version: $(cat .nvmrc)
+                  node-version-file: .nvmrc
                   cache: 'npm'
 
-            - name: Install node dependencies and run Tests
-              run: |
-                - npm install
-                - npm test
+            - name: Install node dependencies
+              run: npm install
+
+            - name: Run Tests
+              run: npm test

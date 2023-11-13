@@ -1,0 +1,4 @@
+{
+  "src/*.{js,ts,json}": ["npx prettier --write --ignore-unknown"],
+  "./*.json": ["npx prettier --write --ignore-unknown"]
+}

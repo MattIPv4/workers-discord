@@ -22,7 +22,8 @@
   "scripts": {
     "test": "tsc --noEmit",
     "build": "tsup",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "prepare": "husky install"
   },
   "peerDependencies": {
     "@cloudflare/workers-types": ">=4.0.0, <5.0.0",
@@ -41,6 +42,8 @@
     "@cloudflare/workers-types": "^4.20231025.0",
     "@types/deep-equal": "^1.0.4",
     "discord-api-types": "^0.37.63",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.1.0",
     "toucan-js": "^3.3.1",
     "tsup": "^7.2.0",
     "typescript": "^5.2.2"

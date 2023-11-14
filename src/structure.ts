@@ -10,8 +10,6 @@ import type {
     APIMessageComponentInteraction,
     APIApplicationCommandOption,
 } from 'discord-api-types/payloads';
-
-// @ts-ignore -- consumers may not have toucan-js, and may not set skipLibCheck
 import type { Toucan } from 'toucan-js';
 
 export interface Context {
@@ -26,7 +24,7 @@ interface Execute<Req extends Request = Request, Ctx extends Context = Context, 
     more: (data: RESTPostAPIWebhookWithTokenJSONBody) => Promise<RESTPostAPIWebhookWithTokenWaitResult>;
     request: Req;
     context: Ctx;
-    sentry: Sentry;
+    sentry?: Sentry;
 }
 
 export interface CommandMeta {

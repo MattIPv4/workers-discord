@@ -32,7 +32,7 @@ const jsonResponse = (obj: any) => new Response(JSON.stringify(obj), {
 /**
  * Handle an incoming Discord command interaction request to the Worker
  */
-const handleCommandInteraction = async <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, interaction: APIApplicationCommandInteraction, commands: Commands<Req, Ctx, Sentry>, sentry: Sentry) => {
+const handleCommandInteraction = async <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, interaction: APIApplicationCommandInteraction, commands: Commands<Req, Ctx, Sentry>, sentry?: Sentry) => {
     // If the command doesn't exist, return a 404
     if (!commands[interaction.data.name])
         return new Response(null, { status: 404 });
@@ -74,7 +74,7 @@ const handleCommandInteraction = async <Req extends Request = Request, Ctx exten
 /**
  * Handle an incoming Discord component interaction request to the Worker
  */
-const handleComponentInteraction = async <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, interaction: APIMessageComponentInteraction, components: Components<Req, Ctx, Sentry>, sentry: Sentry) => {
+const handleComponentInteraction = async <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, interaction: APIMessageComponentInteraction, components: Components<Req, Ctx, Sentry>, sentry?: Sentry) => {
     // If the component doesn't exist, return a 404
     if (!components[interaction.data.custom_id])
         return new Response(null, { status: 404 });
@@ -109,7 +109,7 @@ const handleComponentInteraction = async <Req extends Request = Request, Ctx ext
 /**
  * Handle an incoming Discord interaction request to the Worker
  */
-const handleInteraction = async <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, publicKey: Promise<CryptoKey>, commands: Commands<Req, Ctx, Sentry>, components: Components<Req, Ctx, Sentry>, sentry: Sentry) => {
+const handleInteraction = async <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, publicKey: Promise<CryptoKey>, commands: Commands<Req, Ctx, Sentry>, components: Components<Req, Ctx, Sentry>, sentry?: Sentry) => {
     // Get the body as text
     const body = await request.text();
     if (sentry) sentry.captureException(new Error('test'));
@@ -150,7 +150,7 @@ const handleInteraction = async <Req extends Request = Request, Ctx extends Cont
  *   - POST /interactions
  *   - GET  /health
  */
-const handleRequest = async <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, publicKey: Promise<CryptoKey>, commands: Commands<Req, Ctx, Sentry>, components: Components<Req, Ctx, Sentry>, sentry: Sentry) => {
+const handleRequest = async <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, publicKey: Promise<CryptoKey>, commands: Commands<Req, Ctx, Sentry>, components: Components<Req, Ctx, Sentry>, sentry?: Sentry) => {
     const url = new URL(request.url);
 
     if (request.method === 'POST' && url.pathname === '/interactions')
@@ -179,7 +179,7 @@ const createHandler = <Req extends Request = Request, Ctx extends Context = Cont
     const key = importKey(publicKey);
 
     // Return the handler
-    return (request: Req, context: Ctx, sentry: Sentry) => handleRequest(request, context, key, cmds, cmps, sentry);
+    return (request: Req, context: Ctx, sentry?: Sentry) => handleRequest(request, context, key, cmds, cmps, sentry);
 };
 
 export default createHandler;

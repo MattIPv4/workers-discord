@@ -69,9 +69,9 @@ const objectPatch = <Obj extends Record<string, any>, Diff extends Record<string
 /**
  * Register or update commands with Discord
  */
-const registerCommands = async <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(clientId: string, clientSecret: string, commands: Command<Req, Ctx, Sentry>[], warn = false, guildId?: string) => {
+const registerCommands = async <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(clientId: string, clientSecret: string, commands: Command<Ctx, Req, Sentry>[], warn = false, guildId?: string) => {
     // Validate the provided commands
-    const cmds = Object.values(validateCommands<Req, Ctx, Sentry>(commands, warn));
+    const cmds = Object.values(validateCommands<Ctx, Req, Sentry>(commands, warn));
 
     // Get a token, and our existing commands, from Discord
     const token = await grantToken(clientId, clientSecret);
@@ -89,7 +89,7 @@ const registerCommands = async <Req extends Request = Request, Ctx extends Conte
     }
 
     // Track the commands we've registered or updated
-    const commandData: (Command<Req, Ctx, Sentry> & APIApplicationCommand)[] = [];
+    const commandData: (Command<Ctx, Req, Sentry> & APIApplicationCommand)[] = [];
 
     // Patch any commands that already exist in Discord
     const toPatch = cmds.reduce((arr, command) => {
@@ -103,7 +103,7 @@ const registerCommands = async <Req extends Request = Request, Ctx extends Conte
         }
 
         return [ ...arr, { command, discord, diff } ];
-    }, [] as { command: Command<Req, Ctx, Sentry>; discord: APIApplicationCommand; diff: ReturnType<typeof updatedCommandProps> }[]);
+    }, [] as { command: Command<Ctx, Req, Sentry>; discord: APIApplicationCommand; diff: ReturnType<typeof updatedCommandProps> }[]);
     for (let i = 0; i < toPatch.length; i++) {
         // Naive avoidance of rate limits
         if (i >= 5) await new Promise(resolve => setTimeout(resolve, ratelimit));

@@ -170,7 +170,7 @@ const handleRequest = async <Req extends Request = Request, Ctx extends Context 
 /**
  * Create a new Worker fetch handler for Discord interactions
  */
-const createHandler = <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(commands: Command[], components: Component[], publicKey: string, warn = false) => {
+const createHandler = <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(commands: Command<Req, Ctx, Sentry>[], components: Component<Req, Ctx, Sentry>[], publicKey: string, warn = false) => {
     // Validate the commands and components given
     const cmds = validateCommands<Req, Ctx, Sentry>(commands, warn);
     const cmps = validateComponents<Req, Ctx, Sentry>(components, warn);

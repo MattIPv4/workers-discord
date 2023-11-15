@@ -16,7 +16,7 @@ export interface Context {
     waitUntil: (promise: Promise<any>) => void;
 }
 
-interface Execute<Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined> {
+interface Execute<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> {
     interaction: APIInteraction;
     response: (data: any) => Response;
     wait: (promise: Promise<any>) => void;
@@ -33,21 +33,21 @@ export interface CommandMeta {
     options?: APIApplicationCommandOption[];
 }
 
-export interface Command<Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined> extends CommandMeta {
-    execute: (context: Execute<Req, Ctx, Sentry> & { interaction: APIApplicationCommandInteraction; commands: Commands<Req, Ctx, Sentry> }) => Promise<Response> | Response;
+export interface Command<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> extends CommandMeta {
+    execute: (context: Execute<Ctx, Req, Sentry> & { interaction: APIApplicationCommandInteraction; commands: Commands<Ctx, Req, Sentry> }) => Promise<Response> | Response;
 }
 
-export interface Commands<Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined> {
-    [name: string]: Command<Req, Ctx, Sentry>;
+export interface Commands<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> {
+    [name: string]: Command<Ctx, Req, Sentry>;
 }
 
-export interface Component<Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined> {
+export interface Component<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> {
     name: string;
-    execute: (context: Execute<Req, Ctx, Sentry> & { interaction: APIMessageComponentInteraction }) => Promise<Response> | Response;
+    execute: (context: Execute<Ctx, Req, Sentry> & { interaction: APIMessageComponentInteraction }) => Promise<Response> | Response;
 }
 
-export interface Components<Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined> {
-    [name: string]: Component<Req, Ctx, Sentry>;
+export interface Components<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> {
+    [name: string]: Component<Ctx, Req, Sentry>;
 }
 
 /**
@@ -84,7 +84,7 @@ const isCommand = (value: any, warn = false): value is Command => {
 /**
  * Validate that a set of values are {@link Command} objects
  */
-export const validateCommands = <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(cmds: any[], warn = false) =>
+export const validateCommands = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(cmds: any[], warn = false) =>
     cmds.reduce((acc, cmd) => {
         if (!isCommand(cmd, warn)) return acc;
 
@@ -100,7 +100,7 @@ export const validateCommands = <Req extends Request = Request, Ctx extends Cont
             ...acc,
             [cmd.name]: cmd,
         };
-    }, {}) as Commands<Req, Ctx, Sentry>;
+    }, {}) as Commands<Ctx, Req, Sentry>;
 
 /**
  * Validate that a given value is a {@link Component} object
@@ -130,7 +130,7 @@ const isComponent = (value: any, warn = false): value is Component => {
 /**
  * Validate that a set of values are {@link Component} objects
  */
-export const validateComponents = <Req extends Request = Request, Ctx extends Context = Context, Sentry extends Toucan | undefined = undefined>(cmps: any[], warn = false) =>
+export const validateComponents = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(cmps: any[], warn = false) =>
     cmps.reduce((acc, cmp) => {
         if (!isComponent(cmp, warn)) return acc;
 
@@ -146,4 +146,4 @@ export const validateComponents = <Req extends Request = Request, Ctx extends Co
             ...acc,
             [cmp.name]: cmp,
         };
-    }, {}) as Components<Req, Ctx, Sentry>;
+    }, {}) as Components<Ctx, Req, Sentry>;

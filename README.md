@@ -43,15 +43,16 @@ Ensure Typescript is setup with the correct exposed types for Workers.
 
 Define a `/ping` command that'll show `Pinging...` and then update to `Pong! <current time>` after 5 seconds.
 
-`commands/ping.ts`:
+`src/commands/ping.ts`:
 
 ```ts
 import { InteractionResponseType, MessageFlags, ComponentType } from 'discord-api-types/payloads';
-import { type Command } from 'workers-discord';
+import type { Command } from 'workers-discord';
 
 import { component } from '../components/ping';
+import type { CtxWithEnv } from '../env';
 
-const pingCommand: Command = {
+const pingCommand: Command<CtxWithEnv> = {
     name: 'ping',
     description: 'Ping the application to check if it is online.',
     execute: ({ response, wait, edit }) => {
@@ -84,11 +85,13 @@ export default pingCommand;
 
 Define a refresh button component that we'll include in the `/ping` command response, which will update the message when clicked.
 
-`components/ping.ts`:
+`src/components/ping.ts`:
 
 ```ts
 import { InteractionResponseType, ComponentType, ButtonStyle, type APIButtonComponent } from 'discord-api-types/payloads';
-import { type Component } from 'workers-discord';
+import type { Component } from 'workers-discord';
+
+import type { CtxWithEnv } from '../env';
 
 export const component: APIButtonComponent = {
     type: ComponentType.Button,
@@ -97,7 +100,7 @@ export const component: APIButtonComponent = {
     label: 'Refresh',
 };
 
-const pingComponent: Component = {
+const pingComponent: Component<CtxWithEnv> = {
     name: 'ping',
     execute: async ({ response }) => response({
         type: InteractionResponseType.UpdateMessage,
@@ -116,28 +119,37 @@ const pingComponent: Component = {
 export default pingComponent;
 ```
 
+Create a file to store our environment definition, so that we can use it in commands etc. if needed.
+
+`src/env.ts`:
+
+```ts
+export interface Env {
+    DISCORD_PUBLIC_KEY: string;
+}
+
+export interface CtxWithEnv extends ExecutionContext {
+    env: Env;
+}
+```
+
 Define the Cloudflare Worker request handler with our command and component both registered.
 
-`index.ts`:
+`src/index.ts`:
 
 ```ts
 import { createHandler } from 'workers-discord';
 
 import pingCommand from './commands/ping';
 import pingComponent from './components/ping';
+import type { Env, CtxWithEnv } from './env';
 
-interface Env {
-    DISCORD_PUBLIC_KEY: string;
-};
-
-type CtxWithEnv = ExecutionContext & { env: Env };
-
-let handler: ReturnType<typeof createHandler<Request, CtxWithEnv>>;
+let handler: ReturnType<typeof createHandler<CtxWithEnv>>;
 
 const worker: ExportedHandler<Env> = {
     fetch: async (request, env, ctx) => {
         // Create the handler if it doesn't exist yet
-        handler ??= createHandler<Request, CtxWithEnv>(
+        handler ??= createHandler<CtxWithEnv>(
             [ pingCommand ],        // Array of commands to handle interactions for
             [ pingComponent ],      // Array of components to handle interactions for
             env.DISCORD_PUBLIC_KEY, // Discord application public key

@@ -131,7 +131,7 @@ const isComponent = (value: unknown, warn = false): value is Component => {
     return true;
 };
 
-type CompType = { [key: string]: Component }; // replace this with the actual structure if known
+type CompType = { [key: string]: Component };
 
 /**
  * Validate that a set of values are {@link Component} objects

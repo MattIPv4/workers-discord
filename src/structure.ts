@@ -13,13 +13,13 @@ import type {
 import type { Toucan } from 'toucan-js';
 
 export interface Context {
-    waitUntil: (promise: Promise<any>) => void;
+    waitUntil: (promise: Promise<unknown>) => void;
 }
 
 interface Execute<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> {
     interaction: APIInteraction;
-    response: (data: any) => Response;
-    wait: (promise: Promise<any>) => void;
+    response: (data: unknown) => Response;
+    wait: (promise: Promise<unknown>) => void;
     edit: (data: RESTPatchAPIWebhookWithTokenMessageJSONBody) => Promise<RESTPatchAPIWebhookWithTokenMessageResult>;
     more: (data: RESTPostAPIWebhookWithTokenJSONBody) => Promise<RESTPostAPIWebhookWithTokenWaitResult>;
     request: Req;
@@ -53,7 +53,7 @@ export interface Components<Ctx extends Context = Context, Req extends Request =
 /**
  * Validate that a given value is a {@link Command} object
  */
-const isCommand = (value: any, warn = false): value is Command => {
+const isCommand = (value: unknown, warn = false): value is Command => {
     if (typeof value !== 'object' || value === null) {
         if (warn)
             console.warn('Expected command to be an object');
@@ -84,7 +84,7 @@ const isCommand = (value: any, warn = false): value is Command => {
 /**
  * Validate that a set of values are {@link Command} objects
  */
-export const validateCommands = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(cmds: any[], warn = false) =>
+export const validateCommands = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(cmds: unknown[], warn = false) =>
     cmds.reduce((acc, cmd) => {
         if (!isCommand(cmd, warn)) return acc;
 
@@ -105,7 +105,7 @@ export const validateCommands = <Ctx extends Context = Context, Req extends Requ
 /**
  * Validate that a given value is a {@link Component} object
  */
-const isComponent = (value: any, warn = false): value is Component => {
+const isComponent = (value: unknown, warn = false): value is Component => {
     if (typeof value !== 'object' || value === null) {
         if (warn)
             console.warn('Expected component to be an object');
@@ -130,7 +130,7 @@ const isComponent = (value: any, warn = false): value is Component => {
 /**
  * Validate that a set of values are {@link Component} objects
  */
-export const validateComponents = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(cmps: any[], warn = false) =>
+export const validateComponents = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(cmps: unknown[], warn = false) =>
     cmps.reduce((acc, cmp) => {
         if (!isComponent(cmp, warn)) return acc;
 

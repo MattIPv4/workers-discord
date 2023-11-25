@@ -19,7 +19,7 @@ type Token = Pick<RESTPostOAuth2AccessTokenResult, 'access_token' | 'token_type'
 /**
  * Make a request to a Discord API endpoint
  */
-const api = async (endpoint: string, method: 'GET' | 'POST' | 'PATCH' | 'DELETE', token?: Token, data?: any) => {
+const api = async (endpoint: string, method: 'GET' | 'POST' | 'PATCH' | 'DELETE', token?: Token, data?: unknown) => {
     const res = await fetch(
         `${RouteBases.api}${endpoint}`,
         {

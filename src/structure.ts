@@ -53,7 +53,7 @@ export interface Components<Ctx extends Context = Context, Req extends Request =
 /**
  * Validate that a given value is a {@link Command} object
  */
-const isCommand = (value: unknown, warn = false): value is Command => {
+const isCommand = (value: Command, warn = false): value is Command => {
     if (typeof value !== 'object' || value === null) {
         if (warn)
             console.warn('Expected command to be an object');
@@ -81,26 +81,30 @@ const isCommand = (value: unknown, warn = false): value is Command => {
     return true;
 };
 
+type AccType = { [key: string]: Command };
+
 /**
  * Validate that a set of values are {@link Command} objects
  */
 export const validateCommands = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(cmds: unknown[], warn = false) =>
-    cmds.reduce((acc, cmd) => {
-        if (!isCommand(cmd, warn)) return acc;
+cmds.reduce((acc: AccType, cmd: unknown) => {
+    if (!isCommand(cmd as Command, warn)) return acc;
 
-        // Check the command doesn't already exist
-        if (acc[cmd.name]) {
-            if (warn)
-                console.warn(`Command ${cmd.name} already exists`);
-            return acc;
-        }
+    const command = cmd as Command;
 
-        // Add the command
-        return {
-            ...acc,
-            [cmd.name]: cmd,
-        };
-    }, {}) as Commands<Ctx, Req, Sentry>;
+    // Check the command doesn't already exist
+    if (acc[command.name]) {
+        if (warn)
+            console.warn(`Command ${command.name} already exists`);
+        return acc;
+    }
+
+    // Add the command
+    return {
+        ...acc,
+        [command.name]: command,
+    };
+}, {} as AccType) as Commands<Ctx, Req, Sentry>;
 
 /**
  * Validate that a given value is a {@link Component} object
@@ -112,13 +116,13 @@ const isComponent = (value: unknown, warn = false): value is Component => {
         return false;
     }
 
-    if (typeof value.name !== 'string' || !value.name.length) {
+    if (typeof value === 'object' && value !== null && 'name' in value && typeof value.name === 'string' && value.name.length > 0) {
         if (warn)
             console.warn('Expected component to have a name');
         return false;
     }
 
-    if (typeof value.execute !== 'function') {
+    if (typeof value === 'object' && value !== null && 'execute' in value && typeof value.execute === 'function') {
         if (warn)
             console.warn('Expected component to have an execute function');
         return false;
@@ -127,23 +131,27 @@ const isComponent = (value: unknown, warn = false): value is Component => {
     return true;
 };
 
+type CompType = { [key: string]: Component }; // replace this with the actual structure if known
+
 /**
  * Validate that a set of values are {@link Component} objects
  */
 export const validateComponents = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(cmps: unknown[], warn = false) =>
-    cmps.reduce((acc, cmp) => {
+    cmps.reduce((acc: CompType, cmp: unknown) => {
         if (!isComponent(cmp, warn)) return acc;
 
+        const component = cmp as Component;
+
         // Check the component doesn't already exist
-        if (acc[cmp.name]) {
+        if (acc[component.name]) {
             if (warn)
-                console.warn(`Component ${cmp.name} already exists`);
+                console.warn(`Component ${component.name} already exists`);
             return acc;
         }
 
         // Add the component
         return {
             ...acc,
-            [cmp.name]: cmp,
+            [component.name]: component,
         };
-    }, {}) as Components<Ctx, Req, Sentry>;
+    }, {} as CompType) as Components<Ctx, Req, Sentry>;

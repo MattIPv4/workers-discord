@@ -60,19 +60,19 @@ const isCommand = (value: unknown, warn = false): value is Command => {
         return false;
     }
 
-    if (!('name' in value) || typeof value['name'] !== 'string' || !(value['name'].length)) {
+    if (!('name' in value) || typeof value.name !== 'string' || !(value.name.length)) {
         if (warn)
             console.warn('Expected command to have a name');
         return false;
     }
 
-    if (!('description' in value) || typeof value['description'] !== 'string' || !(value['description'].length)) {
+    if (!('description' in value) || typeof value.description !== 'string' || !(value.description.length)) {
         if (warn)
             console.warn('Expected command to have a description');
         return false;
     }
 
-    if (!('execute' in value) || typeof value['execute'] !== 'function') {
+    if (!('execute' in value) || typeof value.execute !== 'function') {
         if (warn)
             console.warn('Expected command to have an execute function');
         return false;
@@ -114,13 +114,13 @@ const isComponent = (value: unknown, warn = false): value is Component => {
         return false;
     }
 
-    if (!('name' in value) || typeof value['name'] !== 'string' || !(value['name'].length)) {
+    if (!('name' in value) || typeof value.name !== 'string' || !(value.name.length)) {
         if (warn)
             console.warn('Expected component to have a name');
         return false;
     }
 
-    if (!('execute' in value) || typeof value['execute'] !== 'function') {
+    if (!('execute' in value) || typeof value.execute !== 'function') {
         if (warn)
             console.warn('Expected component to have an execute function');
         return false;

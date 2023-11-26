@@ -17,6 +17,7 @@
     "plugins": [
         "@typescript-eslint"
     ],
+    "ignorePatterns": ["dist/*"],
     "rules": {
       "@typescript-eslint/consistent-type-imports": ["error"],
       "no-restricted-imports": ["error", {

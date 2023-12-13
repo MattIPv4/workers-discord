@@ -24,7 +24,7 @@ interface Option {
     name: string;
     description: string;
     required: boolean;
-    choices: any[];
+    choices: unknown[];
     options: Option[];
 }
 
@@ -63,7 +63,7 @@ type Filtered<T extends object, V> = Pick<T, {
 /**
  * Filter an object to only include properties in a given diff
  */
-const objectPatch = <Obj extends Record<string, any>, Diff extends Record<string, boolean>>(obj: Obj, diff: Diff) => Object.entries(obj)
+const objectPatch = <Obj extends Record<string, unknown>, Diff extends Record<string, boolean>>(obj: Obj, diff: Diff) => Object.entries(obj)
     .reduce((acc, [key, value]) => diff[key] ? { ...acc, [key]: value } : acc, {}) as Pick<Obj, Extract<keyof Filtered<Diff, true>, keyof Obj>>;
 
 /**
@@ -110,7 +110,8 @@ const registerCommands = async <Ctx extends Context = Context, Req extends Reque
 
         // Get the props to patch and do the update
         const { command, discord, diff } = toPatch[i];
-        const cmdPatch = objectPatch(command, diff);
+        const commandRecord: Record<string, unknown> = { ...command };
+        const cmdPatch = objectPatch(commandRecord, diff);
         const data = await updateCommand(clientId, token, discord.id, cmdPatch, guildId);
         commandData.push({ ...command, ...data });
     }

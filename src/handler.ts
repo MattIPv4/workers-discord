@@ -23,7 +23,7 @@ import { editDeferred, sendAdditional } from './api';
 /**
  * Create a new JSON response
  */
-const jsonResponse = (obj: any) => new Response(JSON.stringify(obj), {
+const jsonResponse = (obj: unknown) => new Response(JSON.stringify(obj), {
     headers: {
         'Content-Type': 'application/json',
     },

@@ -13,13 +13,13 @@ import type {
 import type { Toucan } from 'toucan-js';
 
 export interface Context {
-    waitUntil: (promise: Promise<any>) => void;
+    waitUntil: (promise: Promise<unknown>) => void;
 }
 
 interface Execute<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> {
     interaction: APIInteraction;
-    response: (data: any) => Response;
-    wait: (promise: Promise<any>) => void;
+    response: (data: unknown) => Response;
+    wait: (promise: Promise<unknown>) => void;
     edit: (data: RESTPatchAPIWebhookWithTokenMessageJSONBody) => Promise<RESTPatchAPIWebhookWithTokenMessageResult>;
     more: (data: RESTPostAPIWebhookWithTokenJSONBody) => Promise<RESTPostAPIWebhookWithTokenWaitResult>;
     request: Req;
@@ -53,39 +53,39 @@ export interface Components<Ctx extends Context = Context, Req extends Request =
 /**
  * Validate that a given value is a {@link Command} object
  */
-const isCommand = (value: any, warn = false): value is Command => {
+const isCommand = <Ctx extends Context, Req extends Request, Sentry extends Toucan | undefined>(value: unknown, warn: boolean): value is Command<Ctx, Req, Sentry> => {
     if (typeof value !== 'object' || value === null) {
         if (warn)
             console.warn('Expected command to be an object');
         return false;
     }
 
-    if (typeof value.name !== 'string' || !value.name.length) {
+    if (!('name' in value) || typeof value.name !== 'string' || !value.name.length) {
         if (warn)
             console.warn('Expected command to have a name');
         return false;
     }
 
-    if (typeof value.description !== 'string' || !value.description.length) {
+    if (!('description' in value) || typeof value.description !== 'string' || !value.description.length) {
         if (warn)
             console.warn('Expected command to have a description');
         return false;
     }
 
-    if (typeof value.execute !== 'function') {
+    if (!('execute' in value) || typeof value.execute !== 'function') {
         if (warn)
             console.warn('Expected command to have an execute function');
         return false;
     }
 
     return true;
-};
+}
 
 /**
  * Validate that a set of values are {@link Command} objects
  */
-export const validateCommands = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(cmds: any[], warn = false) =>
-    cmds.reduce((acc, cmd) => {
+export const validateCommands = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(cmds: unknown[], warn = false) =>
+    cmds.reduce<Commands<Ctx, Req, Sentry>>((acc, cmd) => {
         if (!isCommand(cmd, warn)) return acc;
 
         // Check the command doesn't already exist
@@ -100,38 +100,38 @@ export const validateCommands = <Ctx extends Context = Context, Req extends Requ
             ...acc,
             [cmd.name]: cmd,
         };
-    }, {}) as Commands<Ctx, Req, Sentry>;
+    }, {});
 
 /**
  * Validate that a given value is a {@link Component} object
  */
-const isComponent = (value: any, warn = false): value is Component => {
+const isComponent = <Ctx extends Context, Req extends Request, Sentry extends Toucan | undefined>(value: unknown, warn: boolean): value is Component<Ctx, Req, Sentry> => {
     if (typeof value !== 'object' || value === null) {
         if (warn)
             console.warn('Expected component to be an object');
         return false;
     }
 
-    if (typeof value.name !== 'string' || !value.name.length) {
+    if (!('name' in value) || typeof value.name !== 'string' || !value.name.length) {
         if (warn)
             console.warn('Expected component to have a name');
         return false;
     }
 
-    if (typeof value.execute !== 'function') {
+    if (!('execute' in value) || typeof value.execute !== 'function') {
         if (warn)
             console.warn('Expected component to have an execute function');
         return false;
     }
 
     return true;
-};
+}
 
 /**
  * Validate that a set of values are {@link Component} objects
  */
-export const validateComponents = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(cmps: any[], warn = false) =>
-    cmps.reduce((acc, cmp) => {
+export const validateComponents = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(cmps: unknown[], warn = false) =>
+    cmps.reduce<Components<Ctx, Req, Sentry>>((acc, cmp) => {
         if (!isComponent(cmp, warn)) return acc;
 
         // Check the component doesn't already exist
@@ -146,4 +146,4 @@ export const validateComponents = <Ctx extends Context = Context, Req extends Re
             ...acc,
             [cmp.name]: cmp,
         };
-    }, {}) as Components<Ctx, Req, Sentry>;
+    }, {});

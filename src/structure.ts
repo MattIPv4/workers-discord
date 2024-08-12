@@ -9,6 +9,8 @@ import type {
     APIApplicationCommandInteraction,
     APIMessageComponentInteraction,
     APIApplicationCommandOption,
+    ApplicationIntegrationType,
+    InteractionContextType,
 } from 'discord-api-types/payloads';
 import type { Toucan } from 'toucan-js';
 
@@ -31,6 +33,10 @@ export interface CommandMeta {
     name: string;
     description: string;
     options?: APIApplicationCommandOption[];
+    contexts?: {
+        installation?: ApplicationIntegrationType[],
+        interaction?: InteractionContextType[],
+    };
 }
 
 export interface Command<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> extends CommandMeta {

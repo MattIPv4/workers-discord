@@ -1,7 +1,11 @@
 import type {
     APIApplicationCommand,
     APIApplicationCommandOption,
+    ApplicationCommandType,
+    ApplicationIntegrationType,
+    InteractionContextType,
 } from 'discord-api-types/payloads';
+import type { RESTPatchAPIApplicationCommandJSONBody } from 'discord-api-types/rest';
 import equal from 'deep-equal';
 import type { Toucan } from 'toucan-js';
 
@@ -45,26 +49,42 @@ const consistentCommandOption = (obj: APIApplicationCommandOption): Option => ({
 });
 
 /**
- * Check which properties of a command have changed
+ * Ensure an array of context types is consistent
+ *
+ * Useful when doing deep-equal checks for context type equality
  */
-const updatedCommandProps = (oldCmd: CommandMeta, newCmd: CommandMeta) => ({
-    name: oldCmd.name !== newCmd.name,
-    description: oldCmd.description !== newCmd.description,
-    options: !equal(
-        oldCmd.options && oldCmd.options.map(consistentCommandOption),
-        newCmd.options && newCmd.options.map(consistentCommandOption),
-    ),
-});
-
-type Filtered<T extends object, V> = Pick<T, {
-    [K in keyof T]: T[K] extends V ? K : never
-}[keyof T]>;
+const consistentContexts = (arr: number[] | undefined) => arr && [ ...new Set(arr) ].sort();
 
 /**
- * Filter an object to only include properties in a given diff
+ * Get the patch required to update a command
  */
-const objectPatch = <Obj extends Record<string, any>, Diff extends Record<string, boolean>>(obj: Obj, diff: Diff) => Object.entries(obj)
-    .reduce((acc, [key, value]) => diff[key] ? { ...acc, [key]: value } : acc, {}) as Pick<Obj, Extract<keyof Filtered<Diff, true>, keyof Obj>>;
+const updatedCommandProps = (oldCmd: CommandMeta, newCmd: CommandMeta) => {
+    type Patch = Partial<{
+        name: string;
+        description: string;
+        options: APIApplicationCommandOption[];
+        integration_types: ApplicationIntegrationType[];
+        contexts: InteractionContextType[];
+    }>;
+    const patch: Patch = {};
+
+    if (oldCmd.name !== newCmd.name) patch.name = newCmd.name;
+    if (oldCmd.description !== newCmd.description) patch.description = newCmd.description;
+    if (!equal(
+        oldCmd.options?.map(consistentCommandOption),
+        newCmd.options?.map(consistentCommandOption),
+    )) patch.options = newCmd.options;
+    if (!equal(
+        consistentContexts(oldCmd.contexts?.installation),
+        consistentContexts(newCmd.contexts?.installation),
+    )) patch.integration_types = newCmd.contexts?.installation;
+    if (!equal(
+        consistentContexts(oldCmd.contexts?.interaction),
+        consistentContexts(newCmd.contexts?.interaction),
+    )) patch.contexts = newCmd.contexts?.interaction;
+
+    return patch;
+};
 
 /**
  * Register or update commands with Discord
@@ -89,30 +109,37 @@ const registerCommands = async <Ctx extends Context = Context, Req extends Reque
     }
 
     // Track the commands we've registered or updated
-    const commandData: (Command<Ctx, Req, Sentry> & APIApplicationCommand)[] = [];
+    const commandData: (Command<Ctx, Req, Sentry> & { discord: APIApplicationCommand })[] = [];
 
     // Patch any commands that already exist in Discord
     const toPatch = cmds.reduce((arr, command) => {
         const discord = discordCommands.find(c => c.name === command.name);
         if (!discord) return arr;
 
-        const diff = updatedCommandProps(discord, command);
-        if (!Object.values(diff).includes(true)) {
-            commandData.push({ ...discord, ...command });
+        const diff = updatedCommandProps({
+            name: discord.name,
+            description: discord.description,
+            options: discord.options,
+            contexts: {
+                installation: discord.integration_types,
+                interaction: discord.contexts ?? undefined,
+            }
+        }, command);
+        if (!Object.keys(diff).length) {
+            commandData.push({ ...command, discord });
             return arr;
         }
 
         return [ ...arr, { command, discord, diff } ];
-    }, [] as { command: Command<Ctx, Req, Sentry>; discord: APIApplicationCommand; diff: ReturnType<typeof updatedCommandProps> }[]);
+    }, [] as { command: Command<Ctx, Req, Sentry>; discord: APIApplicationCommand; diff: Partial<RESTPatchAPIApplicationCommandJSONBody> }[]);
     for (let i = 0; i < toPatch.length; i++) {
         // Naive avoidance of rate limits
         if (i >= 5) await new Promise(resolve => setTimeout(resolve, ratelimit));
 
         // Get the props to patch and do the update
         const { command, discord, diff } = toPatch[i];
-        const cmdPatch = objectPatch(command, diff);
-        const data = await updateCommand(clientId, token, discord.id, cmdPatch, guildId);
-        commandData.push({ ...command, ...data });
+        const data = await updateCommand(clientId, token, discord.id, diff, guildId);
+        commandData.push({ ...command, discord: { ...discord, ...data } });
     }
 
     // Register any commands that're new in the code
@@ -123,8 +150,14 @@ const registerCommands = async <Ctx extends Context = Context, Req extends Reque
 
         // Register the new command
         const command = toRegister[i];
-        const data = await registerCommand(clientId, token, command, guildId);
-        commandData.push({ ...command, ...data });
+        const data = await registerCommand(clientId, token, {
+            name: command.name,
+            description: command.description,
+            options: command.options,
+            integration_types: command.contexts?.installation,
+            contexts: command.contexts?.interaction,
+        }, guildId);
+        commandData.push({ ...command, discord: data });
     }
 
     // Done

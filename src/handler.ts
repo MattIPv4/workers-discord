@@ -7,8 +7,8 @@ import {
     type APIMessageComponentInteraction,
 } from 'discord-api-types/payloads';
 import type { Toucan } from 'toucan-js';
+import { isValidRequest, PlatformAlgorithm } from 'discord-verify';
 
-import { verifyRequest, importKey } from './verify';
 import {
     validateCommands,
     validateComponents,
@@ -109,17 +109,13 @@ const handleComponentInteraction = async <Ctx extends Context = Context, Req ext
 /**
  * Handle an incoming Discord interaction request to the Worker
  */
-const handleInteraction = async <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, publicKey: Promise<CryptoKey>, commands: Commands<Ctx, Req, Sentry>, components: Components<Ctx, Req, Sentry>, sentry?: Sentry) => {
-    // Get the body as text
-    const body = await request.text();
-    if (sentry) sentry.captureException(new Error('test'));
-
+const handleInteraction = async <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, publicKey: string, commands: Commands<Ctx, Req, Sentry>, components: Components<Ctx, Req, Sentry>, sentry?: Sentry) => {
     // Verify a legitimate request
-    if (!await verifyRequest(request, body, await publicKey))
+    if (!await isValidRequest(request, publicKey, PlatformAlgorithm.Cloudflare))
         return new Response(null, { status: 401 });
 
     // Get the JSON payload for the interaction request
-    const interaction = JSON.parse(body) as APIInteraction;
+    const interaction = await request.json() as APIInteraction;
     if (sentry) sentry.setRequestBody(interaction);
 
     // Handle different interaction types
@@ -150,7 +146,7 @@ const handleInteraction = async <Ctx extends Context = Context, Req extends Requ
  *   - POST /interactions
  *   - GET  /health
  */
-const handleRequest = async <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, publicKey: Promise<CryptoKey>, commands: Commands<Ctx, Req, Sentry>, components: Components<Ctx, Req, Sentry>, sentry?: Sentry) => {
+const handleRequest = async <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, publicKey: string, commands: Commands<Ctx, Req, Sentry>, components: Components<Ctx, Req, Sentry>, sentry?: Sentry) => {
     const url = new URL(request.url);
 
     if (request.method === 'POST' && url.pathname === '/interactions')
@@ -175,11 +171,8 @@ const createHandler = <Ctx extends Context = Context, Req extends Request = Requ
     const cmds = validateCommands<Ctx, Req, Sentry>(commands, warn);
     const cmps = validateComponents<Ctx, Req, Sentry>(components, warn);
 
-    // Import the full key for verification
-    const key = importKey(publicKey);
-
     // Return the handler
-    return (request: Req, context: Ctx, sentry?: Sentry) => handleRequest(request, context, key, cmds, cmps, sentry);
+    return (request: Req, context: Ctx, sentry?: Sentry) => handleRequest(request, context, publicKey, cmds, cmps, sentry);
 };
 
 export default createHandler;

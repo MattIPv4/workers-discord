@@ -35,7 +35,8 @@
     }
   },
   "dependencies": {
-    "deep-equal": "^2.2.3"
+    "deep-equal": "^2.2.3",
+    "discord-verify": "^1.2.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20231025.0",

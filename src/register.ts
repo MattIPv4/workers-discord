@@ -1,12 +1,11 @@
 import type {
     APIApplicationCommand,
     APIApplicationCommandOption,
-    ApplicationCommandType,
     ApplicationIntegrationType,
     InteractionContextType,
 } from 'discord-api-types/payloads';
 import type { RESTPatchAPIApplicationCommandJSONBody } from 'discord-api-types/rest';
-import equal from 'deep-equal';
+import { dequal } from 'dequal';
 import type { Toucan } from 'toucan-js';
 
 import {
@@ -70,15 +69,15 @@ const updatedCommandProps = (oldCmd: CommandMeta, newCmd: CommandMeta) => {
 
     if (oldCmd.name !== newCmd.name) patch.name = newCmd.name;
     if (oldCmd.description !== newCmd.description) patch.description = newCmd.description;
-    if (!equal(
+    if (!dequal(
         oldCmd.options?.map(consistentCommandOption),
         newCmd.options?.map(consistentCommandOption),
     )) patch.options = newCmd.options;
-    if (!equal(
+    if (!dequal(
         consistentContexts(oldCmd.contexts?.installation),
         consistentContexts(newCmd.contexts?.installation),
     )) patch.integration_types = newCmd.contexts?.installation;
-    if (!equal(
+    if (!dequal(
         consistentContexts(oldCmd.contexts?.interaction),
         consistentContexts(newCmd.contexts?.interaction),
     )) patch.contexts = newCmd.contexts?.interaction;

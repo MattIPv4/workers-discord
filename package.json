@@ -35,12 +35,11 @@
     }
   },
   "dependencies": {
-    "deep-equal": "^2.2.3",
+    "dequal": "^2.0.3",
     "discord-verify": "^1.2.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20231025.0",
-    "@types/deep-equal": "^1.0.4",
     "discord-api-types": "^0.37.84",
     "toucan-js": "^3.3.1",
     "tsup": "^7.2.0",

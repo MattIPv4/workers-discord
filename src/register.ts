@@ -4,6 +4,7 @@ import type {
     ApplicationIntegrationType,
     InteractionContextType,
 } from 'discord-api-types/payloads';
+import { ApplicationCommandType } from 'discord-api-types/payloads';
 import type { RESTPatchAPIApplicationCommandJSONBody } from 'discord-api-types/rest';
 import { dequal } from 'dequal';
 import type { Toucan } from 'toucan-js';
@@ -61,6 +62,8 @@ const updatedCommandProps = (oldCmd: CommandMeta, newCmd: CommandMeta) => {
     type Patch = Partial<{
         name: string;
         description: string;
+        // ApplicationCommandType.PrimaryEntryPoint is not assignable to RESTPatchAPIApplicationCommandJSONBody
+        type?: RESTPatchAPIApplicationCommandJSONBody['type'];
         options: APIApplicationCommandOption[];
         integration_types: ApplicationIntegrationType[];
         contexts: InteractionContextType[];
@@ -68,11 +71,13 @@ const updatedCommandProps = (oldCmd: CommandMeta, newCmd: CommandMeta) => {
     const patch: Patch = {};
 
     if (oldCmd.name !== newCmd.name) patch.name = newCmd.name;
-    if (oldCmd.description !== newCmd.description) patch.description = newCmd.description;
+    if (oldCmd.type !== (newCmd.type ?? ApplicationCommandType.ChatInput)) patch.type = newCmd.type as Patch['type'];
+
+    if ((oldCmd as APIApplicationCommand).description !== (newCmd as APIApplicationCommand).description) patch.description = (newCmd as APIApplicationCommand).description;
     if (!dequal(
-        oldCmd.options?.map(consistentCommandOption),
-        newCmd.options?.map(consistentCommandOption),
-    )) patch.options = newCmd.options;
+        (oldCmd as APIApplicationCommand).options?.map(consistentCommandOption),
+        (newCmd as APIApplicationCommand).options?.map(consistentCommandOption),
+    )) patch.options = (newCmd as APIApplicationCommand).options;
     if (!dequal(
         consistentContexts(oldCmd.contexts?.installation),
         consistentContexts(newCmd.contexts?.installation),
@@ -112,12 +117,13 @@ const registerCommands = async <Ctx extends Context = Context, Req extends Reque
 
     // Patch any commands that already exist in Discord
     const toPatch = cmds.reduce((arr, command) => {
-        const discord = discordCommands.find(c => c.name === command.name);
+        const discord = discordCommands.find(c => c.name === command.name && c.type === (command.type ?? ApplicationCommandType.ChatInput));
         if (!discord) return arr;
 
         const diff = updatedCommandProps({
             name: discord.name,
             description: discord.description,
+            type: discord.type,
             options: discord.options,
             contexts: {
                 installation: discord.integration_types,
@@ -142,7 +148,7 @@ const registerCommands = async <Ctx extends Context = Context, Req extends Reque
     }
 
     // Register any commands that're new in the code
-    const toRegister = cmds.filter(cmd => !discordCommands.find(c => c.name === cmd.name));
+    const toRegister = cmds.filter(cmd => !discordCommands.find(c => c.name === cmd.name && c.type === (cmd.type ?? ApplicationCommandType.ChatInput)));
     for (let i = 0; i < toRegister.length; i++) {
         // Naive avoidance of rate limits
         if (i >= 5) await new Promise(resolve => setTimeout(resolve, ratelimit));
@@ -151,8 +157,9 @@ const registerCommands = async <Ctx extends Context = Context, Req extends Reque
         const command = toRegister[i];
         const data = await registerCommand(clientId, token, {
             name: command.name,
-            description: command.description,
-            options: command.options,
+            description: (command as any).description,
+            type: command.type,
+            options: (command as any).options,
             integration_types: command.contexts?.installation,
             contexts: command.contexts?.interaction,
         }, guildId);

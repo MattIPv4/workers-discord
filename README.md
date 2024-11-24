@@ -55,6 +55,8 @@ import type { CtxWithEnv } from '../env';
 const pingCommand: Command<CtxWithEnv> = {
     name: 'ping',
     description: 'Ping the application to check if it is online.',
+    // Defining a type is optional for chat input (aka "slash") commands
+    // type: ApplicationCommandType.ChatInput,
     execute: ({ response, wait, edit }) => {
         wait((async () => {
             await new Promise(resolve => setTimeout(resolve, 5000));
@@ -119,6 +121,33 @@ const pingComponent: Component<CtxWithEnv> = {
 export default pingComponent;
 ```
 
+Define an `Echo` message context menu command that will repeat the content of the message:
+
+```ts
+import { InteractionResponseType, MessageFlags, ApplicationCommandType } from 'discord-api-types/payloads';
+import type { Command } from 'workers-discord';
+
+import type { CtxWithEnv } from '../env';
+
+export const echoCommand: Command<CtxWithEnv, Request, Toucan> = {
+  name: 'Echo',
+  type: ApplicationCommandType.Message,
+  execute: async ({ response, interaction }) => {
+    // `interaction` is resolved to the appropriate type based on the `type` above
+    // ApplicationCommandType.Message -> APIMessageApplicationCommandInteraction
+    const message = interaction.data.resolved.messages[interaction.data.target_id]
+
+    return response({
+      type: InteractionResponseType.ChannelMessageWithSource,
+      data: {
+        content: message?.content,
+        flags: MessageFlags.Ephemeral,
+      },
+    })
+  },
+}
+```
+
 Create a file to store our environment definition, so that we can use it in commands etc. if needed.
 
 `src/env.ts`:
@@ -142,6 +171,7 @@ import { createHandler } from 'workers-discord';
 
 import pingCommand from './commands/ping';
 import pingComponent from './components/ping';
+import echoCommand from './commands/echo';
 import type { Env, CtxWithEnv } from './env';
 
 let handler: ReturnType<typeof createHandler<CtxWithEnv>>;
@@ -150,10 +180,10 @@ const worker: ExportedHandler<Env> = {
     fetch: async (request, env, ctx) => {
         // Create the handler if it doesn't exist yet
         handler ??= createHandler<CtxWithEnv>(
-            [ pingCommand ],        // Array of commands to handle interactions for
-            [ pingComponent ],      // Array of components to handle interactions for
-            env.DISCORD_PUBLIC_KEY, // Discord application public key
-            true,                   // Whether to log warnings for any invalid commands/components passed
+            [ pingCommand, echoCommand ], // Array of commands to handle interactions for
+            [ pingComponent ],            // Array of components to handle interactions for
+            env.DISCORD_PUBLIC_KEY,       // Discord application public key
+            true,                         // Whether to log warnings for any invalid commands/components passed
         );
 
         // Run the handler, passing the environment to the command/component context
@@ -179,6 +209,7 @@ import { registerCommands } from 'workers-discord';
 import dotenv from 'dotenv';
 
 import pingCommand from './src/commands/ping';
+import echoCommand from './src/commands/echo';
 
 dotenv.config({ path: '.dev.vars' });
 
@@ -194,7 +225,7 @@ export default defineConfig({
         await registerCommands(
             process.env.DISCORD_CLIENT_ID!,     // Discord application client ID
             process.env.DISCORD_CLIENT_SECRET!, // Discord application client secret
-            [ pingCommand ],                    // Array of commands to register with Discord
+            [ pingCommand, echoCommand ],       // Array of commands to register with Discord
             true,                               // Whether to log warnings for any invalid commands passed
             process.env.DISCORD_GUILD_ID,       // Optional guild ID to register guild-specific commands
         );

@@ -21,6 +21,7 @@ import {
     type Context,
     type Command,
     type CommandMeta,
+    type CommandMetaChatInput
 } from './structure';
 
 interface Option {
@@ -129,7 +130,7 @@ const registerCommands = async <Ctx extends Context = Context, Req extends Reque
                 installation: discord.integration_types,
                 interaction: discord.contexts ?? undefined,
             }
-        }, command);
+        } as CommandMetaChatInput, command);
         if (!Object.keys(diff).length) {
             commandData.push({ ...command, discord });
             return arr;

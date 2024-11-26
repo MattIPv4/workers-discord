@@ -97,7 +97,7 @@ const isCommand = (value: any, warn = false): value is Command => {
         return false;
     }
 
-    if ((value.type === undefined || value.type === ApplicationCommandType.ChatInput || value.type === ApplicationCommandType.PrimaryEntryPoint)) {
+    if ((value.type === undefined || value.type === ApplicationCommandType.ChatInput)) {
         if ((typeof value.description !== 'string' || !value.description.length)){
             if (warn)
                 console.warn('Expected ChatInput/PrimaryEntryPoint command to have a description');

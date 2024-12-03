@@ -17,6 +17,7 @@ import {
     type Commands,
     type Component,
     type Components,
+    getInteractionName,
 } from './structure';
 import { editDeferred, sendAdditional } from './api';
 
@@ -33,18 +34,20 @@ const jsonResponse = (obj: any) => new Response(JSON.stringify(obj), {
  * Handle an incoming Discord command interaction request to the Worker
  */
 const handleCommandInteraction = async <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(request: Req, context: Ctx, interaction: APIApplicationCommandInteraction, commands: Commands<Ctx, Req, Sentry>, sentry?: Sentry) => {
+    const name = getInteractionName(interaction);
+
     // If the command doesn't exist, return a 404
-    if (!commands[interaction.data.name])
+    if (!commands[name])
         return new Response(null, { status: 404 });
 
     // Sentry scope
-    if (sentry) sentry.getScope().setTransactionName(`command: ${interaction.data.name}`);
-    if (sentry) sentry.getScope().setTag('command', interaction.data.name);
+    if (sentry) sentry.getScope().setTransactionName(`command: ${name}`);
+    if (sentry) sentry.getScope().setTag('command', name);
 
     // Execute
     try {
-        return commands[interaction.data.name].execute({
-            interaction,
+        return commands[name].execute({
+            interaction: interaction as any,
             response: jsonResponse,
             wait: context.waitUntil.bind(context),
             edit: editDeferred.bind(null, interaction),

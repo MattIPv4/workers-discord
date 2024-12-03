@@ -6,11 +6,17 @@ import type {
 } from 'discord-api-types/rest';
 import type {
     APIInteraction,
-    APIApplicationCommandInteraction,
     APIMessageComponentInteraction,
     APIApplicationCommandOption,
     ApplicationIntegrationType,
     InteractionContextType,
+    APIChatInputApplicationCommandInteraction,
+    APIUserApplicationCommandInteraction,
+    APIMessageApplicationCommandInteraction,
+    APIApplicationCommandInteraction
+} from 'discord-api-types/payloads';
+import {
+    ApplicationCommandType
 } from 'discord-api-types/payloads';
 import type { Toucan } from 'toucan-js';
 
@@ -18,8 +24,8 @@ export interface Context {
     waitUntil: (promise: Promise<any>) => void;
 }
 
-interface Execute<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> {
-    interaction: APIInteraction;
+interface Execute<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined, Interaction extends APIInteraction = APIInteraction> {
+    interaction: Interaction;
     response: (data: any) => Response;
     wait: (promise: Promise<any>) => void;
     edit: (data: RESTPatchAPIWebhookWithTokenMessageJSONBody) => Promise<RESTPatchAPIWebhookWithTokenMessageResult>;
@@ -29,19 +35,38 @@ interface Execute<Ctx extends Context = Context, Req extends Request = Request, 
     sentry?: Sentry;
 }
 
-export interface CommandMeta {
+export interface CommandMetaBase {
     name: string;
-    description: string;
-    options?: APIApplicationCommandOption[];
+    type?: ApplicationCommandType | undefined;
     contexts?: {
         installation?: ApplicationIntegrationType[],
         interaction?: InteractionContextType[],
     };
 }
 
-export interface Command<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> extends CommandMeta {
-    execute: (context: Execute<Ctx, Req, Sentry> & { interaction: APIApplicationCommandInteraction; commands: Commands<Ctx, Req, Sentry> }) => Promise<Response> | Response;
+export interface CommandMetaChatInput extends CommandMetaBase {
+    type?: ApplicationCommandType.ChatInput | undefined;
+    description: string;
+    options?: APIApplicationCommandOption[];
 }
+
+export type CommandMeta = CommandMetaBase | CommandMetaChatInput;
+
+interface CommandWithDescription<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> extends CommandMetaChatInput {
+    execute: (context: Execute<Ctx, Req, Sentry, APIChatInputApplicationCommandInteraction> & { commands: Commands<Ctx, Req, Sentry> }) => Promise<Response> | Response;
+}
+
+interface CommandUserContextMenu<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> extends CommandMetaBase {
+    type: ApplicationCommandType.User;
+    execute: (context: Execute<Ctx, Req, Sentry, APIUserApplicationCommandInteraction> & { commands: Commands<Ctx, Req, Sentry> }) => Promise<Response> | Response;
+}
+
+interface CommandMessageContextMenu<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> extends CommandMetaBase {
+    type: ApplicationCommandType.Message;
+    execute: (context: Execute<Ctx, Req, Sentry, APIMessageApplicationCommandInteraction> & { commands: Commands<Ctx, Req, Sentry> }) => Promise<Response> | Response;
+}
+
+export type Command<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> = CommandWithDescription<Ctx, Req, Sentry> | CommandUserContextMenu<Ctx, Req, Sentry> | CommandMessageContextMenu<Ctx, Req, Sentry>
 
 export interface Commands<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> {
     [name: string]: Command<Ctx, Req, Sentry>;
@@ -72,10 +97,24 @@ const isCommand = (value: any, warn = false): value is Command => {
         return false;
     }
 
-    if (typeof value.description !== 'string' || !value.description.length) {
-        if (warn)
-            console.warn('Expected command to have a description');
-        return false;
+    if ((value.type === undefined || value.type === ApplicationCommandType.ChatInput)) {
+        if ((typeof value.description !== 'string' || !value.description.length)){
+            if (warn)
+                console.warn('Expected ChatInput/PrimaryEntryPoint command to have a description');
+            return false;
+        }
+    } else {
+        if (value.description) {
+            if (warn)
+                console.warn('Expected ContextMenu command to have no description');
+            return false;
+        }
+
+        if (Array.isArray(value.options) ? value.options.length > 0 : value.options !== undefined) {
+            if (warn)
+                console.warn("Expected ContextMenu command to have no options");
+            return false;
+        }
     }
 
     if (typeof value.execute !== 'function') {
@@ -88,23 +127,31 @@ const isCommand = (value: any, warn = false): value is Command => {
 };
 
 /**
+ * Commands can share the same name if they don't share the same type, see https://discord.com/developers/docs/interactions/application-commands#registering-a-command
+ */
+export const getCommandName = (cmd: Command) => `${cmd.name} (type: ${cmd.type ?? ApplicationCommandType.ChatInput})`
+export const getInteractionName = (int: APIApplicationCommandInteraction) => `${int.data.name} (type: ${int.data.type})`
+
+/**
  * Validate that a set of values are {@link Command} objects
  */
 export const validateCommands = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(cmds: any[], warn = false) =>
     cmds.reduce((acc, cmd) => {
         if (!isCommand(cmd, warn)) return acc;
 
+        const name = getCommandName(cmd)
+
         // Check the command doesn't already exist
-        if (acc[cmd.name]) {
+        if (acc[name]) {
             if (warn)
-                console.warn(`Command ${cmd.name} already exists`);
+                console.warn(`Command ${name} already exists`);
             return acc;
         }
 
         // Add the command
         return {
             ...acc,
-            [cmd.name]: cmd,
+            [name]: cmd,
         };
     }, {}) as Commands<Ctx, Req, Sentry>;
 

@@ -20,14 +20,15 @@ type Token = Pick<RESTPostOAuth2AccessTokenResult, 'access_token' | 'token_type'
  * Make a request to a Discord API endpoint
  */
 const api = async (endpoint: string, method: 'GET' | 'POST' | 'PATCH' | 'DELETE', token?: Token, data?: any) => {
+    const dataIsJson = data !== undefined && !(data instanceof URLSearchParams) && !(data instanceof FormData);
     const res = await fetch(
         `${RouteBases.api}${endpoint}`,
         {
             method,
-            body: data !== undefined ? JSON.stringify(data) : undefined,
+            body: dataIsJson ? JSON.stringify(data) : data,
             headers: {
                 ...(token !== undefined && { Authorization: `${token.token_type} ${token.access_token}` }),
-                ...(data !== undefined && { 'Content-Type': 'application/json' }),
+                ...(dataIsJson && { 'Content-Type': 'application/json' }),
             },
         },
     );
@@ -44,7 +45,7 @@ const api = async (endpoint: string, method: 'GET' | 'POST' | 'PATCH' | 'DELETE'
  * Perform an OAuth2 token exchange
  */
 export const grantToken = (clientId: string, clientSecret: string) =>
-    api(`${Routes.oauth2TokenExchange()}?grant_type=client_credentials&scope=applications.commands.update`, 'POST', { token_type: 'Basic', access_token: btoa(clientId + ':' + clientSecret) })
+    api(Routes.oauth2TokenExchange(), 'POST', { token_type: 'Basic', access_token: btoa(clientId + ':' + clientSecret) }, new URLSearchParams({ grant_type: 'client_credentials', scope: 'applications.commands.update' }))
         .then(res => res.json() as Promise<RESTPostOAuth2AccessTokenResult>);
 
 /**

@@ -13,7 +13,9 @@ import type {
     APIChatInputApplicationCommandInteraction,
     APIUserApplicationCommandInteraction,
     APIMessageApplicationCommandInteraction,
-    APIApplicationCommandInteraction
+    APIApplicationCommandInteraction,
+    APIWebhookEvent,
+    ApplicationWebhookEventType,
 } from 'discord-api-types/payloads';
 import {
     ApplicationCommandType
@@ -30,6 +32,14 @@ interface Execute<Ctx extends Context = Context, Req extends Request = Request, 
     wait: (promise: Promise<any>) => void;
     edit: (data: RESTPatchAPIWebhookWithTokenMessageJSONBody) => Promise<RESTPatchAPIWebhookWithTokenMessageResult>;
     more: (data: RESTPostAPIWebhookWithTokenJSONBody) => Promise<RESTPostAPIWebhookWithTokenWaitResult>;
+    request: Req;
+    context: Ctx;
+    sentry?: Sentry;
+}
+
+interface EventExecute<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined, WebhookEvent extends APIWebhookEvent = APIWebhookEvent> {
+    webhook: WebhookEvent;
+    wait: (promise: Promise<any>) => void;
     request: Req;
     context: Ctx;
     sentry?: Sentry;
@@ -79,6 +89,15 @@ export interface Component<Ctx extends Context = Context, Req extends Request = 
 
 export interface Components<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> {
     [name: string]: Component<Ctx, Req, Sentry>;
+}
+
+export interface Event<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> {
+    type: ApplicationWebhookEventType;
+    execute: (context: EventExecute<Ctx, Req, Sentry> & { webhook: APIWebhookEvent }) => Promise<void> | void;
+}
+
+export interface Events<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> {
+    [name: string]: Event<Ctx, Req, Sentry>;
 }
 
 /**
@@ -200,3 +219,50 @@ export const validateComponents = <Ctx extends Context = Context, Req extends Re
             [cmp.name]: cmp,
         };
     }, {}) as Components<Ctx, Req, Sentry>;
+
+/**
+ * Validate that a given value is an {@link Event} object
+ *
+ */
+export const isEvent = (value: any, warn = false): value is Event => {
+    if (typeof value !== 'object' || value === null) {
+        if (warn)
+            console.warn('Expected event to be an object');
+        return false;
+    }
+
+    if (typeof value.type !== 'string' || !value.type.length) {
+        if (warn)
+            console.warn('Expected event to have a type');
+        return false;
+    }
+
+    if (typeof value.execute !== 'function') {
+        if (warn)
+            console.warn('Expected event to have an execute function');
+        return false;
+    }
+
+    return true;
+}
+/**
+ * Validate that a set of values are {@link Event} objects
+ *
+ */
+export const validateEvents = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(events: any[], warn = false) =>
+    events.reduce((acc, event) => {
+        if (!isEvent(event, warn)) return acc;
+
+        // Check the event doesn't already exist
+        if (acc[event.type]) {
+            if (warn)
+                console.warn(`Event ${event.type} already exists`);
+            return acc;
+        }
+
+        // Add the event
+        return {
+            ...acc,
+            [event.type]: event,
+        };
+    }, {}) as Events<Ctx, Req, Sentry>;

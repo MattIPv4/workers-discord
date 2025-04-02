@@ -128,7 +128,7 @@ const handleWebhookEvent = async <Ctx extends Context = Context, Req extends Req
     // Execute
     try {
         events[webhook.event.type].execute({
-            webhook,
+            webhook: webhook as any,
             wait: context.waitUntil.bind(context),
             request,
             context,
@@ -239,7 +239,7 @@ const handleRequest = async <Ctx extends Context = Context, Req extends Request 
  * Create a new Worker fetch handler for Discord interactions
  */
 const createHandler = <Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined>(commands: Command<Ctx, Req, Sentry>[], components: Component<Ctx, Req, Sentry>[], events: Event<Ctx, Req, Sentry>[], publicKey: string, warn = false) => {
-    // Validate the commands, components and given
+    // Validate the commands, components and events given
     const cmds = validateCommands<Ctx, Req, Sentry>(commands, warn);
     const cmps = validateComponents<Ctx, Req, Sentry>(components, warn);
     const evts = validateEvents<Ctx, Req, Sentry>(events, warn);

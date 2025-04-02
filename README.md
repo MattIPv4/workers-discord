@@ -145,7 +145,26 @@ export const echoCommand: Command<CtxWithEnv, Request, Toucan> = {
       },
     })
   },
-}
+};
+```
+You can also listen for webhook events from the Discord API (https://discord.com/developers/docs/events/webhook-events)
+Optional: Listen for an event that fires whenever someone authorizes your application.
+
+```ts
+import { ApplicationWebhookEventType } from 'discord-api-types/payloads';
+import type { Event } from 'workers-discord';
+
+import { CtxWithEnv } from '../env';
+
+export const appAuthEvent: Event<CtxWithEnv> = {
+  type: ApplicationWebhookEventType.ApplicationAuthorized,
+  // Only ApplicationAuthorized and EntitlementCreate are currently supported
+  execute: async({ webhook }) => {
+    // `webhook` will be a webhook event payload as per https://discord.com/developers/docs/events/webhook-events#payload-structure
+    // The inner data will change based on the Type above
+    console.log('App authorised:', webhook);
+  },
+};
 ```
 
 Create a file to store our environment definition, so that we can use it in commands etc. if needed.
@@ -172,6 +191,7 @@ import { createHandler } from 'workers-discord';
 import pingCommand from './commands/ping';
 import pingComponent from './components/ping';
 import echoCommand from './commands/echo';
+import appAuthEvent from './events/appAuth';
 import type { Env, CtxWithEnv } from './env';
 
 let handler: ReturnType<typeof createHandler<CtxWithEnv>>;
@@ -182,6 +202,7 @@ const worker: ExportedHandler<Env> = {
         handler ??= createHandler<CtxWithEnv>(
             [ pingCommand, echoCommand ], // Array of commands to handle interactions for
             [ pingComponent ],            // Array of components to handle interactions for
+            [ appAuthEvent ],             // Array of events to handle, leave blank if not using webhook events
             env.DISCORD_PUBLIC_KEY,       // Discord application public key
             true,                         // Whether to log warnings for any invalid commands/components passed
         );

@@ -16,6 +16,9 @@ import type {
     APIApplicationCommandInteraction,
     APIWebhookEvent,
     ApplicationWebhookEventType,
+    APIWebhookEventApplicationAuthorizedData,
+    APIWebhookEventEntitlementCreateData,
+    APIWebhookEventBody,
 } from 'discord-api-types/payloads';
 import {
     ApplicationCommandType
@@ -37,8 +40,8 @@ interface Execute<Ctx extends Context = Context, Req extends Request = Request, 
     sentry?: Sentry;
 }
 
-interface EventExecute<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined, WebhookEvent extends APIWebhookEvent = APIWebhookEvent> {
-    webhook: WebhookEvent;
+interface EventExecute<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined, Webhook = APIWebhookEvent> {
+    webhook: Webhook;
     wait: (promise: Promise<any>) => void;
     request: Req;
     context: Ctx;
@@ -91,10 +94,23 @@ export interface Components<Ctx extends Context = Context, Req extends Request =
     [name: string]: Component<Ctx, Req, Sentry>;
 }
 
-export interface Event<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> {
+interface EventBase {
     type: ApplicationWebhookEventType;
-    execute: (context: EventExecute<Ctx, Req, Sentry> & { webhook: APIWebhookEvent }) => Promise<void> | void;
 }
+
+interface EventApplicationAuthorised<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> extends EventBase {
+    type: ApplicationWebhookEventType.ApplicationAuthorized;
+    execute: (context: EventExecute<Ctx, Req, Sentry, APIWebhookEvent & { event: APIWebhookEventBody & { data: APIWebhookEventApplicationAuthorizedData } }>) => Promise<void> | void;
+}
+
+interface EventEntitlementCreate<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> extends EventBase {
+    type: ApplicationWebhookEventType.EntitlementCreate;
+    execute: (context: EventExecute<Ctx, Req, Sentry, APIWebhookEvent & { event: APIWebhookEventBody & { data: APIWebhookEventEntitlementCreateData } }>) => Promise<void> | void;
+}
+
+export type Event<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> =
+    EventApplicationAuthorised<Ctx, Req, Sentry> |
+    EventEntitlementCreate<Ctx, Req, Sentry>;
 
 export interface Events<Ctx extends Context = Context, Req extends Request = Request, Sentry extends Toucan | undefined = undefined> {
     [name: string]: Event<Ctx, Req, Sentry>;

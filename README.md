@@ -16,7 +16,8 @@ Install the library and the required packages for this example.
 
 ```sh
 npm install workers-discord discord-api-types
-npm install --save-dev typescript tsup dotenv @cloudflare/workers-types wrangler
+npm install --save-dev typescript tsup dotenv wrangler
+npx wrangler types
 ```
 
 Ensure Typescript is setup with the correct exposed types for Workers.
@@ -30,7 +31,7 @@ Ensure Typescript is setup with the correct exposed types for Workers.
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "lib": ["ESNext"],
-    "types": ["@cloudflare/workers-types"],
+    "types": ["./worker-configuration.d.ts"],
     "noEmitOnError": true,
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,

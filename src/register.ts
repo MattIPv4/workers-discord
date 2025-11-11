@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 import type {
     APIApplicationCommand,
     APIApplicationCommandOption,
@@ -15,6 +17,7 @@ import {
     registerCommand,
     updateCommand,
     removeCommand,
+    type Token,
 } from './api';
 import {
     validateCommands,
@@ -33,6 +36,63 @@ interface Option {
 }
 
 const ratelimit = 20_000 / 5;
+
+let fs: typeof import('node:fs/promises');
+
+/**
+ * Get a cached OAuth2 token for a client, or generate a new one if needed
+ */
+const getCachedToken = async (clientId: string, clientSecret: string): Promise<Token> => {
+    try {
+        // Attempt to read from the cache if possible
+        if (!fs) fs = await import('node:fs/promises');
+        const contents = await fs.readFile(`./node_modules/.cache/workers-discord/${clientId}`, 'utf-8');
+
+        // Validate the cache data
+        const data = JSON.parse(contents);
+        if (typeof data !== 'object' || data === null)
+            throw new Error('Invalid token cache data');
+        if (typeof data.access_token !== 'string' || typeof data.token_type !== 'string' || typeof data.expires_at !== 'string')
+            throw new Error('Invalid token cache data');
+
+        // If the token is valid for at least another minute, use it
+        const date = new Date(data.expires_at);
+        if (isNaN(date.getTime())) throw new Error('Invalid token cache data');
+        if (date.getTime() - 60_000 > Date.now()) {
+            return {
+                access_token: data.access_token,
+                token_type: data.token_type,
+            };
+        }
+    } catch {
+        // Ignore errors
+    }
+
+    // Generate a new token
+    const token = await grantToken(clientId, clientSecret);
+
+    try {
+        // Attempt to write to the cache if possible
+        if (!fs) fs = await import('node:fs/promises');
+        await fs.mkdir(`./node_modules/.cache/workers-discord/`, { recursive: true });
+        await fs.writeFile(
+            `./node_modules/.cache/workers-discord/${clientId}`,
+            JSON.stringify({
+                access_token: token.access_token,
+                token_type: token.token_type,
+                expires_at: new Date(Date.now() + (token.expires_in * 1000)).toISOString(),
+            }),
+            'utf-8',
+        );
+    } catch {
+        // Ignore errors
+    }
+
+    return {
+        access_token: token.access_token,
+        token_type: token.token_type,
+    };
+};
 
 /**
  * Ensure a command option object has a consistent structure
@@ -98,7 +158,7 @@ const registerCommands = async <Ctx extends Context = Context, Req extends Reque
     const cmds = Object.values(validateCommands<Ctx, Req, Sentry>(commands, warn));
 
     // Get a token, and our existing commands, from Discord
-    const token = await grantToken(clientId, clientSecret);
+    const token = await getCachedToken(clientId, clientSecret);
     const discordCommands = await getCommands(clientId, token, guildId);
 
     // Remove any commands that no longer exist in the code

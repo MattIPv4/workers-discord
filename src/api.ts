@@ -14,7 +14,7 @@ import {
 } from 'discord-api-types/rest';
 import { type APIInteraction } from 'discord-api-types/payloads';
 
-type Token = Pick<RESTPostOAuth2AccessTokenResult, 'access_token' | 'token_type'>;
+export type Token = Pick<RESTPostOAuth2AccessTokenResult, 'access_token' | 'token_type'>;
 
 /**
  * Make a request to a Discord API endpoint
